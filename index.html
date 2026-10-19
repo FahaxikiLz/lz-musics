@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>皮卡丘的音乐站 - Pikachu Music</title>
   <meta name="referrer" content="no-referrer" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- 圆润可爱字体 -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1223,6 +1223,62 @@
           "search"
           "playlist";
       }
+
+      /* ===== 移动端自适应：整页自然滚动 ===== */
+      html, body{
+        height:auto;
+        overflow:visible;
+        overflow-x:hidden;
+      }
+      .app{
+        height:auto;
+        min-height:calc(100vh - 32px);
+        min-height:calc(100dvh - 32px);
+        margin:16px 16px calc(16px + env(safe-area-inset-bottom));
+      }
+
+      /* 隐藏键盘/鼠标时代的无功能控件 */
+      .shortcut-hint{ display:none; }
+      .control-secondary{ display:none; }
+
+      /* 封面缩小，播放器区更紧凑 */
+      .player-top{ min-height:0; }
+      .cover-wrapper{ width:100px; height:100px; border-radius:14px; }
+      .cover-disc{ width:56px; height:56px; border-width:8px; }
+
+      /* 歌词保留内部滚动，避免单页无限拉长；其余面板自然撑开 */
+      .lyrics-container{
+        flex:none;
+        max-height:56vh;
+        overflow-y:auto;
+        -webkit-overflow-scrolling:touch;
+      }
+      .search-results-mini{ overflow:visible; }
+      .playlist-main{ overflow:visible; }
+
+      /* 触控目标放大（>=36px） */
+      .btn{ padding:8px 16px; font-size:13px; }
+      .btn-icon{ width:36px; height:36px; font-size:15px; }
+      .track-actions .btn-icon{ width:32px; height:32px; font-size:13px; }
+      .playmode-btn{ width:32px; height:32px; font-size:14px; }
+      .control-main .play-btn{ width:48px; height:48px; font-size:20px; }
+      .track-item{ padding:10px; font-size:12px; }
+      .track-meta-title{ font-size:13px; }
+      .search-mini-item{ padding:10px; font-size:12px; }
+      .mini-title{ font-size:12px; }
+      .mini-artist{ font-size:11px; }
+      .playlist-tab{ padding:6px 12px; }
+      .lang-btn{ padding:6px 12px; }
+
+      /* iOS 聚焦输入框时字号 <16px 会触发页面自动缩放 */
+      .input{ font-size:16px; }
+      .modal input{ font-size:16px; }
+      .limit-row select,
+      .playlist-select-tools select{ font-size:14px; }
+
+      /* 刘海屏安全区 */
+      #toast{ bottom:calc(18px + env(safe-area-inset-bottom)); }
+      footer{ padding-bottom:calc(4px + env(safe-area-inset-bottom)); }
     }
   </style>
 </head>
