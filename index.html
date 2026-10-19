@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600&family=Nunito:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
+      color-scheme: dark; /* 原生表单控件按深色渲染，避免输入后出现白底 */
       --bg-dark: #02030a;
       --panel-glass: rgba(8, 10, 26, 0.26);
       --panel-glass-soft: rgba(10, 14, 35, 0.26);
@@ -312,6 +313,15 @@
     .input:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 1px rgba(245,200,76,0.7);
+    }
+    /* 浏览器 autofill 会强制盖白底：用无限延迟的背景过渡让它永远显示不出来，
+       配合 text-fill-color 保持文字颜色，输入框视觉上始终透明 */
+    .input:-webkit-autofill,
+    .input:-webkit-autofill:hover,
+    .input:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--text-main);
+      caret-color: var(--text-main);
+      transition: background-color 999999s ease-in-out 0s;
     }
 
     /* 左侧搜索 */
@@ -678,6 +688,15 @@
       width:40px;
       height:40px;
       font-size:18px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+    }
+    .control-main .btn svg{
+      display:block;
+      width:1em;
+      height:1em;
     }
     .control-secondary {
       display:flex;
@@ -707,14 +726,11 @@
       position:relative;
       box-shadow:0 12px 32px rgba(0,0,0,0.9);
     }
-    .lyrics-container::before,
-    .lyrics-container::after {
+    .lyrics-container::before {
       content:"";
       position:absolute;
       pointer-events:none;
       mix-blend-mode:screen;
-    }
-    .lyrics-container::before {
       inset:-25%;
       background:conic-gradient(
         from 0deg,
@@ -729,26 +745,6 @@
       animation: lyricsGlow 16s linear infinite;
     }
     @keyframes lyricsGlow { to { transform:rotate(360deg);} }
-    .lyrics-container::after {
-      top:-40%;
-      left:-20%;
-      width:70%;
-      height:150%;
-      background:linear-gradient(
-        120deg,
-        rgba(255,248,170,0.0),
-        rgba(255,248,170,0.36),
-        rgba(161,233,255,0.0)
-      );
-      transform:translateX(-130%);
-      animation: lyricsSweep 7s linear infinite;
-      opacity:0.95;
-    }
-    @keyframes lyricsSweep {
-      0% { transform:translateX(-130%); }
-      50%{ transform:translateX(40%); }
-      100%{ transform:translateX(130%); }
-    }
     .lyrics-container.alt-style::before {
       background:conic-gradient(
         from 0deg,
@@ -1301,7 +1297,6 @@
         </div>
         <div class="title-text">
           <h1 data-i18n="appTitle">皮卡丘的音乐站</h1>
-          <p data-i18n="authorLabel">作者：Zhenchao Jin + GPT 5.1</p>
         </div>
       </div>
       <div class="header-controls">
@@ -1329,7 +1324,7 @@
         <div class="search-panel-content">
           <div class="search-row ripple-target">
             <span class="search-prefix">🔍</span>
-            <input id="search-input" class="input" type="text"
+            <input id="search-input" class="input" type="text" autocomplete="off"
                    placeholder="输入歌名 / 歌手，回车搜索…" />
             <button id="search-btn" class="btn ripple-target" data-i18n="searchButton">搜索</button>
           </div>
@@ -1428,9 +1423,9 @@
               </div>
               <div class="control-row">
                 <div class="control-main">
-                  <button id="prev-btn" class="btn btn-secondary btn-icon ripple-target" title="上一首 (P)">⏮</button>
-                  <button id="play-btn" class="btn play-btn ripple-target" title="播放/暂停 (Space)">▶</button>
-                  <button id="next-btn" class="btn btn-secondary btn-icon ripple-target" title="下一首 (N)">⏭</button>
+                  <button id="prev-btn" class="btn btn-secondary btn-icon ripple-target" title="上一首 (P)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+                  <button id="play-btn" class="btn play-btn ripple-target" title="播放/暂停 (Space)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></button>
+                  <button id="next-btn" class="btn btn-secondary btn-icon ripple-target" title="下一首 (N)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zM16 6h2v12h-2z"/></svg></button>
                 </div>
                 <div class="control-secondary">
                   <span>🔊</span>
@@ -1579,7 +1574,6 @@
     const translations = {
       zh: {
         appTitle:"皮卡丘的音乐站",
-        authorLabel:"作者：Zhenchao Jin + GPT 5.1",
         shortcutHint:"快捷键：Space 播放/暂停 · ←/→ 跳转 · ↑/↓ 音量 · N/P 切歌 · F 收藏 · L 切换歌词效果",
         shortcutPanelTitle:"快捷键说明",
         shortcutPanelDesc:"使用键盘可以更加方便地控制皮卡丘的音乐站：",
@@ -1660,7 +1654,6 @@
       },
       en: {
         appTitle:"Pikachu Music Station",
-        authorLabel:"Author: Zhenchao Jin + GPT 5.1",
         shortcutHint:"Shortcuts: Space Play/Pause · ←/→ Seek · ↑/↓ Volume · N/P Track · F Fav · L Lyrics FX",
         shortcutPanelTitle:"Keyboard Shortcuts",
         shortcutPanelDesc:"Control Pikachu Music Station more easily with your keyboard:",
@@ -2771,7 +2764,7 @@
         dom.audio.src=track.audioUrl;
         await dom.audio.play();
         state.isPlaying=true;
-        dom.playBtn.textContent='⏸';
+        setPlayIcon(true);
         dom.playerStatus.textContent=t('playerStatusPlaying');
       }catch(e){
         console.error(e);
@@ -3383,15 +3376,20 @@
         audioLevel = 0.3 + 0.7 * intensity * (dom.audio.volume || 1);
         updateLyricsHighlight(cur);
       });
+      /* ===== 播放控制图标（SVG，避免 ▶/⏸ 字符视觉重心偏移） ===== */
+      const ICON_PLAY='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+      const ICON_PAUSE='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+      const setPlayIcon=playing=>{dom.playBtn.innerHTML=playing?ICON_PAUSE:ICON_PLAY;};
+
       dom.audio.addEventListener('play',()=>{
         state.isPlaying=true;
-        dom.playBtn.textContent='⏸';
+        setPlayIcon(true);
         dom.playerStatus.textContent=t('playerStatusPlaying');
         if('mediaSession' in navigator)navigator.mediaSession.playbackState='playing';
       });
       dom.audio.addEventListener('pause',()=>{
         state.isPlaying=false;
-        dom.playBtn.textContent='▶';
+        setPlayIcon(false);
         dom.playerStatus.textContent=t('playerStatusPaused');
         audioLevel = 0;
         if('mediaSession' in navigator)navigator.mediaSession.playbackState='paused';
@@ -3409,27 +3407,39 @@
         try{navigator.mediaSession.setActionHandler('nexttrack',()=>playNext('next'));}catch(_){}
       }
 
-      /* 进度条：支持点击跳转 + 拖拽（Pointer Events，触屏/鼠标通用） */
-      let seeking=false;
-      const seekToPointer=(e)=>{
+      /* 进度条：拖动中仅预览 UI，松手才真正 seek 一次。
+         避免连续 currentTime 赋值反复打断流媒体请求导致播放暂停 */
+      let seeking=false, pendingRatio=0;
+      const pointerRatio=e=>{
         const rect=dom.progressWrapper.getBoundingClientRect();
-        if(!rect.width)return;
-        const r=(e.clientX-rect.left)/rect.width;
+        if(!rect.width)return 0;
+        return Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+      };
+      const previewSeek=e=>{
+        const r=pointerRatio(e);pendingRatio=r;
         const dur=dom.audio.duration||0;
-        if(dur>0)dom.audio.currentTime=Math.max(0,Math.min(dur,dur*r));
+        dom.progressBar.style.transform='scaleX('+r+')';
+        dom.progressHandle.style.left=(dom.progressWrapper.clientWidth*r)+'px';
+        dom.currentTime.textContent=formatTime(dur*r);
       };
       dom.progressWrapper.addEventListener('pointerdown',e=>{
+        if(!(dom.audio.duration>0))return; /* 时长未知时不可拖 */
         seeking=true;
         try{dom.progressWrapper.setPointerCapture(e.pointerId);}catch(_){}
-        seekToPointer(e);
+        previewSeek(e);
       });
       dom.progressWrapper.addEventListener('pointermove',e=>{
-        if(seeking)seekToPointer(e);
+        if(seeking)previewSeek(e);
       });
       const endSeek=e=>{
         if(!seeking)return;
         seeking=false;
         try{dom.progressWrapper.releasePointerCapture(e.pointerId);}catch(_){}
+        const dur=dom.audio.duration||0;
+        if(e.type==='pointerup'&&dur>0){
+          dom.audio.currentTime=Math.max(0,Math.min(dur,dur*pendingRatio));
+        }
+        /* pointercancel 不 seek，进度 UI 由下一次 timeupdate 恢复 */
       };
       dom.progressWrapper.addEventListener('pointerup',endSeek);
       dom.progressWrapper.addEventListener('pointercancel',endSeek);
