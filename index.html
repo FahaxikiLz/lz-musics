@@ -436,10 +436,12 @@
       cursor: pointer;
       transition: background .15s, transform .1s, box-shadow .1s;
     }
-    .search-mini-item:hover {
-      background: rgba(26,32,80,0.9);
-      box-shadow: 0 8px 18px rgba(0,0,0,0.85);
-      transform: translateY(-1px);
+    @media (hover:hover) {
+      .search-mini-item:hover {
+        background: rgba(26,32,80,0.9);
+        box-shadow: 0 8px 18px rgba(0,0,0,0.85);
+        transform: translateY(-1px);
+      }
     }
     .mini-meta-main {
       display: flex;
@@ -641,6 +643,7 @@
       position:relative;
       cursor:pointer;
       overflow:hidden;
+      touch-action:none; /* 拖动进度条时不触发页面滚动 */
     }
     .progress-bar {
       position:absolute;
@@ -949,10 +952,12 @@
       cursor:pointer;
       transition:background .15s, transform .1s, box-shadow .1s;
     }
-    .track-item:hover {
-      background:rgba(26,32,80,0.95);
-      transform:translateY(-1px);
-      box-shadow:0 8px 18px rgba(0,0,0,0.9);
+    @media (hover:hover) {
+      .track-item:hover {
+        background:rgba(26,32,80,0.95);
+        transform:translateY(-1px);
+        box-shadow:0 8px 18px rgba(0,0,0,0.9);
+      }
     }
     .track-item.playing {
       border-color:var(--accent);
@@ -1263,6 +1268,7 @@
       .track-actions .btn-icon{ width:32px; height:32px; font-size:13px; }
       .playmode-btn{ width:32px; height:32px; font-size:14px; }
       .control-main .play-btn{ width:48px; height:48px; font-size:20px; }
+      .progress-bar-wrapper{ height:10px; } /* 手指更好按 */
       .track-item{ padding:10px; font-size:12px; }
       .track-meta-title{ font-size:13px; }
       .search-mini-item{ padding:10px; font-size:12px; }
@@ -2735,6 +2741,18 @@
           dom.coverImg.style.display='none';
           dom.coverPlaceholder.style.display='flex';
         }
+
+        // 同步锁屏/通知栏媒体信息（Media Session）
+        if('mediaSession' in navigator){
+          try{
+            navigator.mediaSession.metadata=new MediaMetadata({
+              title:track.title||'',
+              artist:track.artist||'',
+              album:'Pikachu Music',
+              artwork:track.cover?[{src:track.cover,sizes:'512x512',type:'image/jpeg'}]:[]
+            });
+          }catch(_){}
+        }
       };
 
       dom.playerStatus.textContent=t('playerStatusLoading');
@@ -3115,14 +3133,15 @@
     function setupParticles(){
       const canvas=$('bg-canvas');const ctx=canvas.getContext('2d');
       function resize(){
-        const dpr=window.devicePixelRatio||1;
+        const dpr=Math.min(window.devicePixelRatio||1,2); /* 手机高 DPR 屏封顶 2，避免填充开销过大 */
         canvas.width=window.innerWidth*dpr;
         canvas.height=window.innerHeight*dpr;
         ctx.setTransform(dpr,0,0,dpr,0,0);
       }
       resize();window.addEventListener('resize',resize);
       const parts=[];
-      const N=90;
+      const isMobileViewport=window.matchMedia('(max-width:860px)').matches;
+      const N=isMobileViewport?45:90;
       for(let i=0;i<N;i++){
         parts.push({
           x:Math.random()*window.innerWidth,
@@ -3320,6 +3339,26 @@
         }
       });
 
+      /* 移动端（<=860px）面板为整页滚动，内部 scroll 事件不再触发，
+         改为监听 window 滚动：当列表面板底部接近视口底部时自动加载更多 */
+      const mobileMq=window.matchMedia('(max-width:860px)');
+      let mobileAutoLoadTs=0;
+      window.addEventListener('scroll',()=>{
+        if(!mobileMq.matches)return;
+        if(Date.now()-mobileAutoLoadTs<1000)return; /* 节流防连发 */
+        if(!canAutoLoadMore())return;
+        const nearPanelEnd=el=>{
+          if(!el)return false;
+          const r=el.getBoundingClientRect();
+          return r.top<window.innerHeight && r.bottom>=-400 && r.bottom<=window.innerHeight+80;
+        };
+        const activeTab=document.querySelector('.playlist-tab.active')?.dataset.tab||'results';
+        let hit=false;
+        if(activeTab==='results' && nearPanelEnd(dom.playlistMain))hit=true;
+        else if(nearPanelEnd(dom.searchMiniList))hit=true;
+        if(hit){mobileAutoLoadTs=Date.now();requestMoreResults();}
+      },{passive:true});
+
       dom.playBtn.addEventListener('click',togglePlayPause);
       dom.prevBtn.addEventListener('click',()=>playNext('prev'));
       dom.nextBtn.addEventListener('click',()=>playNext('next'));
@@ -3348,24 +3387,52 @@
         state.isPlaying=true;
         dom.playBtn.textContent='⏸';
         dom.playerStatus.textContent=t('playerStatusPlaying');
+        if('mediaSession' in navigator)navigator.mediaSession.playbackState='playing';
       });
       dom.audio.addEventListener('pause',()=>{
         state.isPlaying=false;
         dom.playBtn.textContent='▶';
         dom.playerStatus.textContent=t('playerStatusPaused');
         audioLevel = 0;
+        if('mediaSession' in navigator)navigator.mediaSession.playbackState='paused';
       });
       dom.audio.addEventListener('ended',()=>{
         audioLevel = 0;
         playNext('next');
       });
 
-      dom.progressWrapper.addEventListener('click',e=>{
+      /* ===== Media Session：锁屏/通知栏播放控制（移动端） ===== */
+      if('mediaSession' in navigator){
+        try{navigator.mediaSession.setActionHandler('play',()=>dom.audio.play());}catch(_){}
+        try{navigator.mediaSession.setActionHandler('pause',()=>dom.audio.pause());}catch(_){}
+        try{navigator.mediaSession.setActionHandler('previoustrack',()=>playNext('prev'));}catch(_){}
+        try{navigator.mediaSession.setActionHandler('nexttrack',()=>playNext('next'));}catch(_){}
+      }
+
+      /* 进度条：支持点击跳转 + 拖拽（Pointer Events，触屏/鼠标通用） */
+      let seeking=false;
+      const seekToPointer=(e)=>{
         const rect=dom.progressWrapper.getBoundingClientRect();
+        if(!rect.width)return;
         const r=(e.clientX-rect.left)/rect.width;
         const dur=dom.audio.duration||0;
-        dom.audio.currentTime=Math.max(0,Math.min(dur,dur*r));
+        if(dur>0)dom.audio.currentTime=Math.max(0,Math.min(dur,dur*r));
+      };
+      dom.progressWrapper.addEventListener('pointerdown',e=>{
+        seeking=true;
+        try{dom.progressWrapper.setPointerCapture(e.pointerId);}catch(_){}
+        seekToPointer(e);
       });
+      dom.progressWrapper.addEventListener('pointermove',e=>{
+        if(seeking)seekToPointer(e);
+      });
+      const endSeek=e=>{
+        if(!seeking)return;
+        seeking=false;
+        try{dom.progressWrapper.releasePointerCapture(e.pointerId);}catch(_){}
+      };
+      dom.progressWrapper.addEventListener('pointerup',endSeek);
+      dom.progressWrapper.addEventListener('pointercancel',endSeek);
 
       document.querySelectorAll('.playlist-tab').forEach(tab=>{
         tab.addEventListener('click',()=>{
