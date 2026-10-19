@@ -200,6 +200,44 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.9);
       font-size: 15px;
     }
+    .sync-toggle-btn {
+      border: none;
+      border-radius: 999px;
+      width: 28px; height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.4);
+      color: var(--text-sub);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0,0,0,0.9);
+      font-size: 14px;
+    }
+    .sync-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+    .sync-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .sync-actions .btn {
+      flex: 1;
+      padding: 7px 8px;
+      font-size: 12px;
+    }
+    .sync-status {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-sub);
+      min-height: 14px;
+      word-break: break-all;
+    }
 
     /* 布局修正：左右也参与分配宽度，不再挤出空白 */
     .layout {
@@ -1308,6 +1346,7 @@
           快捷键：Space 播放/暂停 · ←/→ 跳转 · ↑/↓ 音量 · N/P 切歌 · F 收藏 · L 切换歌词效果
         </div>
         <button id="shortcut-toggle-btn" class="shortcut-toggle-btn ripple-target" title="快捷键说明">⌨️</button>
+        <button id="sync-toggle-btn" class="sync-toggle-btn ripple-target" title="歌单云同步">☁</button>
       </div>
     </header>
 
@@ -1567,6 +1606,41 @@
     </div>
   </div>
 
+  <!-- 歌单云同步设置弹窗 -->
+  <div id="sync-modal" class="modal-backdrop">
+    <div class="modal ripple-target">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">☁</div>
+          <span data-i18n="syncPanelTitle">歌单云同步</span>
+        </div>
+        <button id="sync-close" class="modal-close-btn">×</button>
+      </div>
+      <p class="modal-desc" data-i18n="syncPanelDesc">
+        填写 GitHub Gist 信息后，歌单与收藏将在手机和电脑之间自动同步。
+      </p>
+      <label class="sync-field">
+        <span data-i18n="syncGistLabel">Gist ID</span>
+        <input id="sync-gist-input" type="text" autocomplete="off" placeholder="gist.github.com/用户名/ 后面的那串 ID" />
+      </label>
+      <label class="sync-field">
+        <span data-i18n="syncTokenLabel">访问令牌 Token（需 gist 权限）</span>
+        <input id="sync-token-input" type="password" autocomplete="off" placeholder="Personal Access Token" />
+      </label>
+      <div class="sync-actions">
+        <button id="sync-save-btn" class="btn ripple-target" data-i18n="syncSave">保存并连接</button>
+      </div>
+      <div class="sync-actions">
+        <button id="sync-pull-force-btn" class="btn btn-ghost ripple-target" data-i18n="syncPullForce">从云端覆盖本地</button>
+        <button id="sync-push-force-btn" class="btn btn-ghost ripple-target" data-i18n="syncPushForce">上传覆盖云端</button>
+      </div>
+      <div id="sync-status" class="sync-status"></div>
+      <p class="modal-desc" style="margin-top:8px;font-size:10px;" data-i18n="syncNote">
+        令牌仅保存在本机浏览器中，请勿泄露。自动同步采用合并策略：新增内容会双端合并；如需删除同步，请使用上方覆盖按钮。
+      </p>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
   <script>
@@ -1574,6 +1648,27 @@
     const translations = {
       zh: {
         appTitle:"皮卡丘的音乐站",
+        syncPanelTitle:"歌单云同步",
+        syncPanelDesc:"填写 GitHub Gist 信息后，歌单与收藏将在手机和电脑之间自动同步。",
+        syncGistLabel:"Gist ID",
+        syncTokenLabel:"访问令牌 Token（需 gist 权限）",
+        syncSave:"保存并连接",
+        syncPullForce:"从云端覆盖本地",
+        syncPushForce:"上传覆盖云端",
+        syncNote:"令牌仅保存在本机浏览器中，请勿泄露。打开页面自动拉取，改动后自动上传；新增内容双端合并，删除也会同步（删除的歌曲/歌单不会复活）。",
+        syncStatusWorking:"同步中…",
+        syncStatusCloudEmpty:"云端暂无数据。",
+        syncStatusSynced:"已同步：",
+        syncStatusPushed:"已上传：",
+        syncStatusUpToDate:"已是最新。",
+        syncStatusFail:"同步失败：",
+        syncStatusOverwritten:"已从云端覆盖本地。",
+        toastSyncSaved:"云同步配置已保存。",
+        toastSyncPushed:"歌单已同步到云端。",
+        toastSyncPulled:"已从云端获取歌单。",
+        toastSyncMerged:"已合并云端歌单改动。",
+        toastSyncFail:"云同步失败，请检查网络和配置。",
+        toastSyncNoConfig:"请先填写 Gist ID 和 Token。",
         shortcutHint:"快捷键：Space 播放/暂停 · ←/→ 跳转 · ↑/↓ 音量 · N/P 切歌 · F 收藏 · L 切换歌词效果",
         shortcutPanelTitle:"快捷键说明",
         shortcutPanelDesc:"使用键盘可以更加方便地控制皮卡丘的音乐站：",
@@ -1654,6 +1749,27 @@
       },
       en: {
         appTitle:"Pikachu Music Station",
+        syncPanelTitle:"Playlist Cloud Sync",
+        syncPanelDesc:"Fill in your GitHub Gist info to keep playlists and favorites in sync between phone and desktop.",
+        syncGistLabel:"Gist ID",
+        syncTokenLabel:"Access Token (gist scope required)",
+        syncSave:"Save & Connect",
+        syncPullForce:"Overwrite Local from Cloud",
+        syncPushForce:"Upload Overwrite Cloud",
+        syncNote:"The token is stored only in this browser. Auto pull on open and auto push on change; additions merge on both ends and deletions sync too (deleted songs/playlists won't come back).",
+        syncStatusWorking:"Syncing…",
+        syncStatusCloudEmpty:"Cloud is empty.",
+        syncStatusSynced:"Synced: ",
+        syncStatusPushed:"Uploaded: ",
+        syncStatusUpToDate:"Up to date.",
+        syncStatusFail:"Sync failed: ",
+        syncStatusOverwritten:"Local library overwritten from cloud.",
+        toastSyncSaved:"Cloud sync config saved.",
+        toastSyncPushed:"Playlists synced to cloud.",
+        toastSyncPulled:"Playlists fetched from cloud.",
+        toastSyncMerged:"Cloud playlist changes merged.",
+        toastSyncFail:"Cloud sync failed. Check network and config.",
+        toastSyncNoConfig:"Please fill in Gist ID and Token first.",
         shortcutHint:"Shortcuts: Space Play/Pause · ←/→ Seek · ↑/↓ Volume · N/P Track · F Fav · L Lyrics FX",
         shortcutPanelTitle:"Keyboard Shortcuts",
         shortcutPanelDesc:"Control Pikachu Music Station more easily with your keyboard:",
@@ -1881,6 +1997,7 @@
       return {
         version:1,
         savedAt:new Date().toISOString(),
+        tombstones:state.syncTombstones||{},
         favorites:state.favorites.map(serializeTrack).filter(Boolean),
         playlists:state.playlists.map(pl=>({
           id:pl.id,
@@ -1892,10 +2009,18 @@
 
     function saveLibraryToStorage(){
       try{
+        /* 墓碑检测：对比上次已知状态，发现删除记墓碑、发现重加清墓碑 */
+        if(syncSuppressDetect){
+          syncSuppressDetect=false;
+          syncLastKnownIds=collectLibraryIds();
+        }else{
+          detectLibraryDeletions();
+        }
         localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(getLibrarySnapshot()));
       }catch(e){
         console.warn('save library failed', e);
       }
+      scheduleCloudSync();
     }
 
     function rebuildLibraryTrackMap(){
@@ -1921,6 +2046,8 @@
               tracks:Array.isArray(pl.tracks) ? pl.tracks.map(deserializeTrack).filter(Boolean) : []
             }))
           : [];
+        state.syncTombstones=(data.tombstones && typeof data.tombstones==='object')?data.tombstones:{};
+        syncLastKnownIds=collectLibraryIds();
         rebuildLibraryTrackMap();
       }catch(e){
         console.warn('load library failed', e);
@@ -2009,6 +2136,335 @@
       updateMainFavButton();
 
       return {empty:false, addedFavorites, addedPlaylists, addedPlaylistTracks, totalAdded};
+    }
+
+    /* ===================== 云同步（GitHub Gist） ===================== */
+    const SYNC_GIST_KEY='pikachu-music-sync-gist';
+    const SYNC_TOKEN_KEY='pikachu-music-sync-token';
+    const SYNC_META_KEY='pikachu-music-sync-meta';
+    const SYNC_FILE_NAME='pikachu-music-sync.json';
+    let syncPushTimer=null;
+    let syncInFlight=false;
+    let syncReschedule=false;
+    let syncUiBound=false;
+
+    function getSyncConfig(){
+      let gist='',token='';
+      try{
+        gist=(localStorage.getItem(SYNC_GIST_KEY)||'').trim();
+        token=(localStorage.getItem(SYNC_TOKEN_KEY)||'').trim();
+      }catch(e){}
+      return {gist,token,valid:!!(gist&&token)};
+    }
+    function readSyncMeta(){
+      try{
+        const raw=localStorage.getItem(SYNC_META_KEY);
+        if(raw)return JSON.parse(raw);
+      }catch(e){}
+      return {lastSyncedSnapshot:'',lastSyncedAt:0};
+    }
+    function writeSyncMeta(meta){
+      try{localStorage.setItem(SYNC_META_KEY,JSON.stringify(meta));}catch(e){}
+    }
+    function setSyncStatus(msg){
+      const el=document.getElementById('sync-status');
+      if(el)el.textContent=msg;
+    }
+
+    async function gistRequest(cfg,method,body){
+      const res=await fetch('https://api.github.com/gists/'+encodeURIComponent(cfg.gist),{
+        method:method||'GET',
+        headers:{
+          'Accept':'application/vnd.github+json',
+          'Authorization':'Bearer '+cfg.token,
+          'Content-Type':'application/json'
+        },
+        body:body?JSON.stringify(body):undefined
+      });
+      if(!res.ok){
+        let detail='';
+        try{
+          const j=await res.json();
+          detail=(j && j.message) || '';
+        }catch(_){ }
+        if(res.status===403){
+          if(/rate limit/i.test(detail)) detail='API 请求频率超限，请稍后再试 (rate limit exceeded)';
+          else if(/personal access token|integration|resource not accessible/i.test(detail)) detail='Token 类型不支持 Gist：Fine-grained token 无法访问 Gists API，请改用经典 Token 并勾选 gist 权限';
+          else if(!detail) detail='无权限 (403)：请确认 Token 为经典类型且勾选了 gist 权限';
+        }else if(res.status===401){
+          detail='Token 无效或已过期 (401)，请重新生成';
+        }else if(res.status===404){
+          detail='找不到该 Gist (404)：请检查 Gist ID 是否正确、Token 是否有 gist 权限';
+        }
+        throw new Error('GitHub API '+res.status+(detail?'：'+detail:''));
+      }
+      return res.json();
+    }
+
+    async function fetchCloudLibrary(cfg){
+      const data=await gistRequest(cfg,'GET');
+      const file=data && data.files && data.files[SYNC_FILE_NAME];
+      if(!file || !file.content) return null;
+      try{
+        const parsed=JSON.parse(file.content);
+        return parsed && parsed.library ? parsed : null;
+      }catch(e){ return null; }
+    }
+
+    function applyLibrarySnapshot(lib){
+      state.favorites=Array.isArray(lib.favorites)
+        ? lib.favorites.map(deserializeTrack).filter(Boolean):[];
+      state.playlists=Array.isArray(lib.playlists)
+        ? lib.playlists.map((pl,idx)=>({
+            id:pl.id || ('pl-cloud-'+idx+'-'+Date.now()),
+            name:pl.name || (state.language==='zh'?'未命名歌单':'Untitled Playlist'),
+            tracks:Array.isArray(pl.tracks)?pl.tracks.map(deserializeTrack).filter(Boolean):[]
+          }))
+        :[];
+      state.syncTombstones=(lib.tombstones && typeof lib.tombstones==='object')
+        ? JSON.parse(JSON.stringify(lib.tombstones)) : {};
+      rebuildLibraryTrackMap();
+    }
+
+    let syncLastKnownIds=null;
+    let syncSuppressDetect=false;
+
+    function collectLibraryIds(){
+      const f=new Set(), p=new Map();
+      state.favorites.forEach(tr=>{ if(tr&&tr.uid) f.add(tr.uid); });
+      state.playlists.forEach(pl=>{
+        if(!pl||!pl.id)return;
+        const set=new Set();
+        (pl.tracks||[]).forEach(tr=>{ if(tr&&tr.uid) set.add(tr.uid); });
+        p.set(pl.id,set);
+      });
+      return {f,p};
+    }
+
+    /* 对比上次已知状态：消失的记删除墓碑；消失后又出现的（重新添加）记清除墓碑 */
+    function detectLibraryDeletions(){
+      if(!syncLastKnownIds){ syncLastKnownIds=collectLibraryIds(); return; }
+      const prev=syncLastKnownIds;
+      const curr=collectLibraryIds();
+      const now=Date.now();
+      const T=state.syncTombstones=state.syncTombstones||{};
+      prev.f.forEach(uid=>{
+        if(!curr.f.has(uid)) T['f|'+uid]={ts:now,del:1};
+      });
+      curr.f.forEach(uid=>{
+        if(!prev.f.has(uid)){
+          const tb=T['f|'+uid];
+          if(tb && tb.del===1) T['f|'+uid]={ts:now,del:0};
+        }
+      });
+      prev.p.forEach((uids,plId)=>{
+        const cset=curr.p.get(plId);
+        if(!cset){ T['p|'+plId]={ts:now,del:1}; return; }
+        uids.forEach(uid=>{ if(!cset.has(uid)) T['p|'+plId+'|'+uid]={ts:now,del:1}; });
+      });
+      curr.p.forEach((uids,plId)=>{
+        const pset=prev.p.get(plId);
+        if(!pset){
+          const tb=T['p|'+plId];
+          if(tb && tb.del===1) T['p|'+plId]={ts:now,del:0};
+          return;
+        }
+        uids.forEach(uid=>{
+          if(!pset.has(uid)){
+            const tb=T['p|'+plId+'|'+uid];
+            if(tb && tb.del===1) T['p|'+plId+'|'+uid]={ts:now,del:0};
+          }
+        });
+      });
+      syncLastKnownIds=curr;
+    }
+
+    /* 合并云端墓碑：同一 key 取时间戳更新的那个事件（删除或清除） */
+    function mergeTombstones(cloudT){
+      if(!cloudT || typeof cloudT!=='object')return;
+      const T=state.syncTombstones=state.syncTombstones||{};
+      Object.keys(cloudT).forEach(k=>{
+        const c=cloudT[k];
+        if(!c || typeof c!=='object' || typeof c.ts!=='number')return;
+        const l=T[k];
+        if(!l || c.ts>(l.ts||0)) T[k]={ts:c.ts,del:c.del?1:0};
+      });
+    }
+
+    /* 按墓碑过滤本地内容：被标记删除的不再出现 */
+    function filterByTombstones(){
+      const T=state.syncTombstones=state.syncTombstones||{};
+      const dead=k=>{ const tb=T[k]; return !!(tb && tb.del===1); };
+      state.favorites=state.favorites.filter(tr=>tr&&tr.uid&&!dead('f|'+tr.uid));
+      state.playlists=state.playlists.filter(pl=>pl&&pl.id&&!dead('p|'+pl.id));
+      state.playlists.forEach(pl=>{
+        pl.tracks=(pl.tracks||[]).filter(tr=>tr&&tr.uid&&!dead('p|'+pl.id+'|'+tr.uid));
+      });
+    }
+
+    function mergeCloudLibrary(lib){
+      mergeTombstones(lib.tombstones);
+      filterByTombstones();
+      /* union 合并前先按墓碑过滤云端数据：被删除的内容不因云端仍留存而复活 */
+      const T=state.syncTombstones||{};
+      const dead=k=>{ const tb=T[k]; return !!(tb&&tb.del===1); };
+      const cloudFavs=(Array.isArray(lib.favorites)?lib.favorites:[])
+        .filter(tr=>tr&&tr.uid&&!dead('f|'+tr.uid));
+      mergeImportedTracks(state.favorites, cloudFavs);
+      (Array.isArray(lib.playlists)?lib.playlists:[]).forEach((pl,idx)=>{
+        if(!pl||typeof pl!=='object')return;
+        const rawId=(pl.id||'').toString().trim();
+        if(rawId && dead('p|'+rawId))return; /* 整个歌单已被墓碑删除，不再引入 */
+        const fallbackName=state.language==='zh'?'云端歌单':'Cloud Playlist';
+        const name=(pl.name||fallbackName).toString().trim()||fallbackName;
+        let target=rawId?state.playlists.find(item=>item.id===rawId):null;
+        if(!target)target=state.playlists.find(item=>item.name===name);
+        if(!target){
+          target={id:rawId||('pl-cloud-'+Date.now()+'-'+idx+'-'+Math.random().toString(16).slice(2)),name,tracks:[]};
+          state.playlists.push(target);
+        }
+        const plKey='p|'+target.id;
+        const cloudTracks=(Array.isArray(pl.tracks)?pl.tracks:[])
+          .filter(tr=>tr&&tr.uid&&!dead(plKey+'|'+tr.uid));
+        mergeImportedTracks(target.tracks, cloudTracks);
+      });
+      rebuildLibraryTrackMap();
+    }
+
+    function refreshLibraryUI(){
+      renderPlaylistOptions();
+      renderPlaylistList();
+      updateMainFavButton();
+    }
+
+    async function pullCloudLibrary(){
+      const cfg=getSyncConfig();
+      if(!cfg.valid)return;
+      setSyncStatus(t('syncStatusWorking'));
+      try{
+        const cloud=await fetchCloudLibrary(cfg);
+        if(!cloud){
+          const snap=getLibrarySnapshot();
+          if(snap.favorites.length||snap.playlists.length){
+            setSyncStatus(t('syncStatusCloudEmpty'));
+            await pushCloudLibrary(true);
+          }else{
+            setSyncStatus(t('syncStatusCloudEmpty'));
+          }
+          return;
+        }
+        mergeCloudLibrary(cloud.library);
+        saveLibraryToStorage();
+        refreshLibraryUI();
+        setSyncStatus(t('syncStatusSynced')+new Date(cloud.syncedAt||Date.now()).toLocaleString());
+      }catch(e){
+        console.warn('cloud pull failed',e);
+        setSyncStatus(t('syncStatusFail')+e.message);
+        showToast(t('toastSyncFail'));
+      }
+    }
+
+    async function pushCloudLibrary(force){
+      const cfg=getSyncConfig();
+      if(!cfg.valid)return;
+      if(syncInFlight){syncReschedule=true;return;}
+      syncInFlight=true;
+      try{
+        if(!force){
+          /* 写回前先拉云端：若其他设备有新改动，先合并再写，避免互相覆盖 */
+          const cloud=await fetchCloudLibrary(cfg);
+          if(cloud){
+            const meta=readSyncMeta();
+            if(JSON.stringify(cloud.library)!==meta.lastSyncedSnapshot){
+              mergeCloudLibrary(cloud.library);
+              saveLibraryToStorage();
+            }
+          }
+        }
+        const snap=getLibrarySnapshot();
+        const snapStr=JSON.stringify(snap);
+        const meta=readSyncMeta();
+        if(!force && snapStr===meta.lastSyncedSnapshot){
+          setSyncStatus(t('syncStatusUpToDate'));
+          return;
+        }
+        const syncedAt=Date.now();
+        await gistRequest(cfg,'PATCH',{
+          files:{ [SYNC_FILE_NAME]: { content: JSON.stringify({library:snap,syncedAt}) } }
+        });
+        writeSyncMeta({lastSyncedSnapshot:snapStr,lastSyncedAt:syncedAt});
+        setSyncStatus(t('syncStatusPushed')+new Date(syncedAt).toLocaleString());
+        showToast(t('toastSyncPushed'));
+      }catch(e){
+        console.warn('cloud push failed',e);
+        setSyncStatus(t('syncStatusFail')+e.message);
+        showToast(t('toastSyncFail'));
+      }finally{
+        syncInFlight=false;
+        if(syncReschedule){syncReschedule=false;scheduleCloudSync();}
+      }
+    }
+
+    function scheduleCloudSync(){
+      const cfg=getSyncConfig();
+      if(!cfg.valid)return;
+      if(syncPushTimer)clearTimeout(syncPushTimer);
+      syncPushTimer=setTimeout(()=>{
+        syncPushTimer=null;
+        pushCloudLibrary(false);
+      },3000);
+    }
+
+    async function forceOverwriteFromCloud(){
+      const cfg=getSyncConfig();
+      if(!cfg.valid){showToast(t('toastSyncNoConfig'));return;}
+      try{
+        setSyncStatus(t('syncStatusWorking'));
+        const cloud=await fetchCloudLibrary(cfg);
+        if(!cloud){setSyncStatus(t('syncStatusCloudEmpty'));return;}
+        applyLibrarySnapshot(cloud.library);
+        syncSuppressDetect=true; /* 覆盖语义：以云端为准，不做删除检测 */
+        saveLibraryToStorage();
+        refreshLibraryUI();
+        showToast(t('toastSyncPulled'));
+        setSyncStatus(t('syncStatusOverwritten'));
+      }catch(e){
+        console.warn('cloud overwrite failed',e);
+        setSyncStatus(t('syncStatusFail')+e.message);
+        showToast(t('toastSyncFail'));
+      }
+    }
+
+    function bindSyncUI(){
+      if(syncUiBound)return;
+      syncUiBound=true;
+      const open=()=>{$('sync-modal').classList.add('show');};
+      $('sync-toggle-btn').addEventListener('click',open);
+      $('sync-close').addEventListener('click',()=>{$('sync-modal').classList.remove('show');});
+      $('sync-modal').addEventListener('click',e=>{if(e.target===$('sync-modal'))$('sync-modal').classList.remove('show');});
+      $('sync-save-btn').addEventListener('click',()=>{
+        const gist=$('sync-gist-input').value.trim();
+        const token=$('sync-token-input').value.trim();
+        if(!gist||!token){showToast(t('toastSyncNoConfig'));return;}
+        try{
+          localStorage.setItem(SYNC_GIST_KEY,gist);
+          localStorage.setItem(SYNC_TOKEN_KEY,token);
+        }catch(e){showToast(t('toastSyncFail'));return;}
+        showToast(t('toastSyncSaved'));
+        pullCloudLibrary();
+      });
+      $('sync-pull-force-btn').addEventListener('click',forceOverwriteFromCloud);
+      $('sync-push-force-btn').addEventListener('click',()=>pushCloudLibrary(true));
+    }
+
+    function initCloudSync(){
+      bindSyncUI();
+      const cfg=getSyncConfig();
+      const gistInput=$('sync-gist-input');
+      const tokenInput=$('sync-token-input');
+      if(gistInput)gistInput.value=cfg.gist;
+      if(tokenInput)tokenInput.value=cfg.token;
+      if(cfg.valid)pullCloudLibrary();
     }
 
     function handleImportPlaylistFile(e){
@@ -3363,6 +3819,7 @@
       });
 
       dom.audio.addEventListener('timeupdate',()=>{
+        if(seeking)return; /* 拖动预览中：避免 timeupdate 用旧位置反复覆盖预览 UI */
         const cur=dom.audio.currentTime||0, dur=dom.audio.duration||0;
         dom.currentTime.textContent=formatTime(cur);
         dom.totalTime.textContent=formatTime(dur||0);
@@ -3401,8 +3858,8 @@
 
       /* ===== Media Session：锁屏/通知栏播放控制（移动端） ===== */
       if('mediaSession' in navigator){
-        try{navigator.mediaSession.setActionHandler('play',()=>dom.audio.play());}catch(_){}
-        try{navigator.mediaSession.setActionHandler('pause',()=>dom.audio.pause());}catch(_){}
+        try{navigator.mediaSession.setActionHandler('play',()=>dom.audio.play().catch(()=>{}));}catch(_){}
+        try{navigator.mediaSession.setActionHandler('pause',()=>dom.audio.pause().catch(()=>{}));}catch(_){}
         try{navigator.mediaSession.setActionHandler('previoustrack',()=>playNext('prev'));}catch(_){}
         try{navigator.mediaSession.setActionHandler('nexttrack',()=>playNext('next'));}catch(_){}
       }
@@ -3534,6 +3991,7 @@
       setupDOM();
       try{const lg=localStorage.getItem('pikachu-music-lang'); if(lg)state.language=lg;}catch(e){}
       loadLibraryFromStorage();
+      initCloudSync();
       setupParticles();
       setupRipple();
       setupEvents();
