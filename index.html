@@ -1500,9 +1500,9 @@
             <span data-i18n="playlistTitle">播放列表</span>
           </div>
           <div class="playlist-tabs ripple-target">
-            <div class="playlist-tab active" data-tab="results" data-i18n="tabResults">搜索结果</div>
+            <div class="playlist-tab" data-tab="results" data-i18n="tabResults">搜索结果</div>
             <div class="playlist-tab" data-tab="favorites" data-i18n="tabFavorites">我的收藏</div>
-            <div class="playlist-tab" data-tab="playlists" data-i18n="tabCustomLists">自建歌单</div>
+            <div class="playlist-tab active" data-tab="playlists" data-i18n="tabCustomLists">自建歌单</div>
           </div>
         </div>
 
@@ -1869,7 +1869,7 @@
       favorites:[],
       playlists:[],
       currentTrack:null,
-      playContext:{type:'results',index:-1,playlistId:null},
+      playContext:{type:'playlist',index:-1,playlistId:null},
       playMode:'list',
       isPlaying:false,
       lyricLines:[],
@@ -3157,8 +3157,10 @@
       dom.favBtn.classList.toggle('btn-fav-active',active);
     }
 
+    let playSeq=0; /* 切歌序号：竞态保护 */
     async function playTrack(track,context){
       if(!track)return;
+      const seq=++playSeq;
       state.currentTrack=track;
       state.playContext=context||state.playContext;
 
@@ -3219,6 +3221,7 @@
 
       try{
         await ensureTrackDetails(track);
+        if(seq!==playSeq)return; /* 等待详情期间已有更新的切歌请求：静默放弃 */
         applyUI();
         state.lyricLines = track.lrc ? parseLRC(track.lrc) : [];
         renderLyrics();
@@ -3230,10 +3233,17 @@
         dom.currentTime.textContent=formatTime(0);
         dom.totalTime.textContent=formatTime(0);
         await dom.audio.play();
+        if(seq!==playSeq)return; /* play 等待期间被更新的切歌取代 */
         state.isPlaying=true;
         setPlayIcon(true);
         dom.playerStatus.textContent=t('playerStatusPlaying');
       }catch(e){
+        if(seq!==playSeq)return; /* 旧请求被打断是正常竞态，不算"播放失败" */
+        if(e && e.name==='AbortError'){
+          /* 当前请求被暂停/中止打断（如刚点播放又立刻暂停），同样不算失败 */
+          dom.playerStatus.textContent=t('playerStatusIdle');
+          return;
+        }
         console.error(e);
         showToast(t('toastPlayError'));
         dom.playerStatus.textContent=t('playerStatusIdle');
@@ -3929,8 +3939,7 @@
             if(state.playlists.length&&!state.playContext.playlistId)state.playContext.playlistId=state.playlists[0].id;
           }
           renderPlaylistList();
-          const list=getActiveList();
-          if(!state.currentTrack && list.length) playFromList(state.playContext.type,0,state.playContext.playlistId);
+          /* 仅切换视图，不自动开播 */
         });
       });
 
@@ -4006,6 +4015,10 @@
       setupDOM();
       try{const lg=localStorage.getItem('pikachu-music-lang'); if(lg)state.language=lg;}catch(e){}
       loadLibraryFromStorage();
+      /* 默认停在"自建歌单"tab：补上第一个歌单的上下文 id */
+      if(!state.playContext.playlistId && state.playlists.length){
+        state.playContext.playlistId=state.playlists[0].id;
+      }
       initCloudSync();
       setupParticles();
       setupRipple();
