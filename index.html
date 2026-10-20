@@ -2806,11 +2806,14 @@
       state.searchInProgress=false;
       dom.searchStatus.textContent=t('searchStatusDone');
       dom.searchCount.textContent=state.searchResults.length.toString();
+      /* 新搜索完成：自动切到"搜索结果"tab，让结果立即可见（加载更多不切） */
+      if(reset && state.searchResults.length){
+        document.querySelectorAll('.playlist-tab').forEach(el=>el.classList.toggle('active',el.dataset.tab==='results'));
+        state.playContext.type='results';
+        state.playContext.playlistId=null;
+      }
       renderMiniSearchList();
       renderPlaylistList();
-      if(!state.currentTrack && state.searchResults.length){
-        playFromList('results',0);
-      }
       if(!reset){
         if(added===0){state.noMoreResults=true;showToast(t('toastNoMore'));}
         else state.noMoreResults=false;
