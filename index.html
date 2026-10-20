@@ -231,6 +231,10 @@
       padding: 7px 8px;
       font-size: 12px;
     }
+    /* 保存并连接：纯色黄，去掉 .btn 自带的白色高光渐变（弹窗里像蒙了一层雾） */
+    #sync-save-btn {
+      background: var(--accent);
+    }
     .sync-status {
       margin-top: 8px;
       font-size: 11px;
@@ -1245,6 +1249,8 @@
       .playlist-panel{grid-area:playlist;}
     }
     @media (max-width:860px){
+      /* 移动端：搜索结果只在播放列表中展示，隐藏搜索框下的迷你列表 */
+      #search-mini-list{ display:none !important; }
       header{
         flex-direction:column;
         align-items:flex-start;
@@ -2441,7 +2447,7 @@
       const open=()=>{$('sync-modal').classList.add('show');};
       $('sync-toggle-btn').addEventListener('click',open);
       $('sync-close').addEventListener('click',()=>{$('sync-modal').classList.remove('show');});
-      $('sync-modal').addEventListener('click',e=>{if(e.target===$('sync-modal'))$('sync-modal').classList.remove('show');});
+      /* 仅通过 × 关闭：点遮罩不关闭，避免填写配置时误触丢失 */
       $('sync-save-btn').addEventListener('click',()=>{
         const gist=$('sync-gist-input').value.trim();
         const token=$('sync-token-input').value.trim();
@@ -3218,6 +3224,11 @@
         renderLyrics();
         if(!track.audioUrl){showToast(t('toastPlayError'));dom.playerStatus.textContent=t('playerStatusIdle');return;}
         dom.audio.src=track.audioUrl;
+        /* 重置进度条/时间显示：避免新歌加载期间残留上一首的末尾状态（如播完列表回绕时卡在最后） */
+        dom.progressBar.style.transform='scaleX(0)';
+        dom.progressHandle.style.left='0px';
+        dom.currentTime.textContent=formatTime(0);
+        dom.totalTime.textContent=formatTime(0);
         await dom.audio.play();
         state.isPlaying=true;
         setPlayIcon(true);
@@ -3818,6 +3829,10 @@
         dom.audio.volume=parseFloat(dom.volumeSlider.value);
       });
 
+      /* 元数据就绪即更新总时长：新歌加载阶段就能看到正确 duration，不必等开始播放 */
+      dom.audio.addEventListener('loadedmetadata',()=>{
+        dom.totalTime.textContent=formatTime(dom.audio.duration||0);
+      });
       dom.audio.addEventListener('timeupdate',()=>{
         if(seeking)return; /* 拖动预览中：避免 timeupdate 用旧位置反复覆盖预览 UI */
         const cur=dom.audio.currentTime||0, dur=dom.audio.duration||0;
