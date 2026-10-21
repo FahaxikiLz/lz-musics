@@ -327,6 +327,11 @@
       color: var(--text-sub);
       box-shadow: none;
     }
+    .btn-danger {
+      background: radial-gradient(circle at 30% 0, rgba(255,255,255,0.18), rgba(214,74,74,0.96));
+      color:#fff;
+      box-shadow: 0 7px 16px rgba(190,40,40,0.6);
+    }
     .btn:active {
       transform: translateY(1px) scale(.97);
       box-shadow: 0 4px 10px rgba(0,0,0,0.85);
@@ -1061,25 +1066,6 @@
       transition:opacity .2s ease, transform .2s ease;
       z-index:1500;
     }
-    #toast.has-action {
-      pointer-events:auto;
-      display:flex;
-      align-items:center;
-      gap:12px;
-      padding:8px 10px 8px 16px;
-    }
-    .toast-undo-btn {
-      border:none;
-      background:rgba(245,200,76,0.15);
-      color:var(--accent);
-      font-size:12px;
-      font-weight:600;
-      padding:5px 12px;
-      border-radius:999px;
-      cursor:pointer;
-      flex-shrink:0;
-    }
-    .toast-undo-btn:hover { background:rgba(245,200,76,0.28); }
     #toast.show {
       opacity:1;
       transform:translateX(-50%) translateY(-4px);
@@ -1225,6 +1211,14 @@
       font-size:11px;
       color:var(--text-sub);
     }
+    /* 删除确认：正文需要一眼读清，比普通说明文字略大 */
+    #confirm-msg {
+      margin:6px 0 14px;
+      font-size:12.5px;
+      line-height:1.65;
+      color:var(--text-main);
+      word-break:break-word;
+    }
 
     .modal input {
       width:100%;
@@ -1353,6 +1347,10 @@
       .mini-artist{ font-size:11px; }
       .playlist-tab{ padding:6px 12px; }
       .lang-btn{ padding:6px 12px; }
+
+      /* 删除确认：主次按钮更易点中 */
+      #confirm-modal .modal-actions{ gap:10px; }
+      #confirm-modal .modal-actions .btn{ min-height:40px; padding:9px 18px; }
 
       /* iOS 聚焦输入框时字号 <16px 会触发页面自动缩放 */
       .input{ font-size:16px; }
@@ -1616,6 +1614,24 @@
     </div>
   </div>
 
+  <!-- 删除二次确认弹窗 -->
+  <div id="confirm-modal" class="modal-backdrop">
+    <div class="modal ripple-target">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">⚠️</div>
+          <span id="confirm-title" data-i18n="confirmTitle">确认删除</span>
+        </div>
+        <button id="confirm-close" class="modal-close-btn">×</button>
+      </div>
+      <p class="modal-desc" id="confirm-msg"></p>
+      <div class="modal-actions">
+        <button id="confirm-cancel-btn" class="btn btn-ghost ripple-target" data-i18n="modalCancel">取消</button>
+        <button id="confirm-ok-btn" class="btn btn-danger ripple-target" data-i18n="confirmDelete">删除</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 快捷键说明弹窗 -->
   <div id="shortcut-modal" class="modal-backdrop">
     <div class="modal ripple-target">
@@ -1717,8 +1733,13 @@
         syncTokenLabel:"访问令牌 Token（需 gist 权限）",
         syncSave:"保存并连接",
         tabDaily:"每日推荐",
-        toastUndo:"撤销",
-        toastUndoDone:"已撤销",
+        confirmTitle:"确认删除",
+        confirmDelete:"删除",
+        confirmRemove:"移除",
+        confirmDeletePlaylistTitle:"删除歌单",
+        confirmDeletePlaylistMsg:"确定要删除歌单「{name}」吗？删除后会同步到云端，且无法恢复。",
+        confirmRemoveTrackTitle:"从歌单移除",
+        confirmRemoveTrackMsg:"确定要把这首歌从「{name}」中移除吗？",
         playlistInfoDaily:"今日精选 30 首 · 每天零点更新",
         toastNeedPlaylist:"还没有歌单，先新建一个吧～",
         pickerTitle:"选择要加入的歌单",
@@ -1793,10 +1814,8 @@
         toastLyricStyleSwitched:"已切换歌词炫酷效果。",
         toastDownloadNotReady:"当前歌曲还未加载完成，稍后再试。",
         toastPlaylistCreated:"歌单创建成功。",
-        toastPlaylistDeleted:"歌单已删除。",
-        toastTrackRemovedFromPlaylist:"已从歌单移除。",
-        confirmDeletePlaylist:"确定要删除这个歌单吗？",
-        confirmRemoveTrack:"确定要从歌单中移除这首歌吗？",
+        toastPlaylistDeleted:"歌单已删除",
+        toastTrackRemovedFromPlaylist:"已从歌单移除",
         toastPlaylistImported:"导入完成",
         toastPlaylistImportEmpty:"导入文件里没有可用歌单或收藏。",
         toastPlaylistImportError:"导入失败，请确认文件是本站导出的 JSON。",
@@ -1825,8 +1844,13 @@
         syncTokenLabel:"Access Token (gist scope required)",
         syncSave:"Save & Connect",
         tabDaily:"Daily Picks",
-        toastUndo:"Undo",
-        toastUndoDone:"Restored",
+        confirmTitle:"Confirm deletion",
+        confirmDelete:"Delete",
+        confirmRemove:"Remove",
+        confirmDeletePlaylistTitle:"Delete playlist",
+        confirmDeletePlaylistMsg:"Delete the playlist \"{name}\"? It will be synced to the cloud and cannot be undone.",
+        confirmRemoveTrackTitle:"Remove from playlist",
+        confirmRemoveTrackMsg:"Remove this song from \"{name}\"?",
         playlistInfoDaily:"30 picks today · refreshes at midnight",
         toastNeedPlaylist:"No playlist yet. Create one first!",
         pickerTitle:"Choose a Playlist",
@@ -1901,10 +1925,8 @@
         toastLyricStyleSwitched:"Lyrics FX toggled.",
         toastDownloadNotReady:"Song not fully loaded yet. Try again later.",
         toastPlaylistCreated:"Playlist created.",
-        toastPlaylistDeleted:"Playlist deleted.",
-        toastTrackRemovedFromPlaylist:"Removed from playlist.",
-        confirmDeletePlaylist:"Delete this playlist?",
-        confirmRemoveTrack:"Remove this song from the playlist?",
+        toastPlaylistDeleted:"Playlist deleted",
+        toastTrackRemovedFromPlaylist:"Removed from playlist",
         toastPlaylistImported:"Import completed",
         toastPlaylistImportEmpty:"No usable playlists or favorites found in this file.",
         toastPlaylistImportError:"Import failed. Please choose a JSON file exported by this site.",
@@ -1961,40 +1983,28 @@
     function t(k){const lang=state.language;return (translations[lang]&&translations[lang][k])||translations.zh[k]||k;}
     function showToast(msg){
       const toast=$('toast'); if(!toast)return;
-      toast.classList.remove('has-action');
       toast.textContent=msg;
       toast.classList.add('show');
       setTimeout(()=>toast.classList.remove('show'),2000);
     }
-    /* 撤销式删除提示：5 秒内点"撤销"恢复，超时自动生效（真正删除已在调用方执行） */
-    let undoToastTimer=null;
-    function showUndoToast(msg,undoFn){
-      const toast=$('toast'); if(!toast){return;}
-      if(undoToastTimer)clearTimeout(undoToastTimer);
-      toast.classList.add('has-action');
-      toast.innerHTML='';
-      const span=document.createElement('span');
-      span.textContent=msg;
-      const btn=document.createElement('button');
-      btn.className='toast-undo-btn';
-      btn.textContent=t('toastUndo');
-      let undone=false;
-      btn.addEventListener('click',()=>{
-        if(undone)return;
-        undone=true;
-        clearTimeout(undoToastTimer);
-        undoFn();
-        showToast(t('toastUndoDone'));
+    /* 删除类操作的二次确认：自绘弹窗，返回 Promise<boolean>（不走浏览器原生 confirm） */
+    let confirmResolve=null;
+    function showConfirm(opts){
+      const o=opts||{};
+      return new Promise(resolve=>{
+        /* 理论上弹窗遮罩会挡住其它入口；若仍有并发调用，先把上一个按"取消"结掉，避免 Promise 悬空 */
+        if(confirmResolve){const prev=confirmResolve;confirmResolve=null;prev(false);}
+        confirmResolve=resolve;
+        $('confirm-title').textContent=o.title||t('confirmTitle');
+        $('confirm-msg').textContent=o.message||'';
+        $('confirm-ok-btn').textContent=o.okText||t('confirmDelete');
+        $('confirm-modal').classList.add('show');
       });
-      toast.appendChild(span);
-      toast.appendChild(btn);
-      toast.classList.add('show');
-      undoToastTimer=setTimeout(()=>{
-        if(undone)return;
-        toast.classList.remove('show');
-        toast.classList.remove('has-action');
-        toast.innerHTML='';
-      },5000);
+    }
+    function closeConfirm(result){
+      const m=$('confirm-modal'); if(m)m.classList.remove('show');
+      const r=confirmResolve; confirmResolve=null;
+      if(r)r(!!result);
     }
     function formatTime(sec){
       if(!isFinite(sec)||sec<0)sec=0;
@@ -3600,11 +3610,22 @@
       $('playlist-picker-modal').classList.remove('show');
     }
 
-    function deleteSelectedPlaylist(){
+    async function deleteSelectedPlaylist(){
       const plId=dom.playlistSelect.value;
       if(!plId){showToast(t('toastNeedPlaylistSelected'));return;}
+      const target=state.playlists.find(p=>p.id===plId);
+      if(!target){showToast(t('toastNeedPlaylistSelected'));return;}
+
+      const ok=await showConfirm({
+        title:t('confirmDeletePlaylistTitle'),
+        message:t('confirmDeletePlaylistMsg').replace('{name}',target.name),
+        okText:t('confirmDelete')
+      });
+      if(!ok)return;
+
+      /* 确认弹窗期间歌单可能已被增删：重新定位索引，避免删错 */
       const idx=state.playlists.findIndex(p=>p.id===plId);
-      if(idx<0){showToast(t('toastNeedPlaylistSelected'));return;}
+      if(idx<0)return;
 
       const removed=state.playlists.splice(idx,1)[0];
       const next=state.playlists[Math.min(idx,state.playlists.length-1)]||state.playlists[0]||null;
@@ -3616,40 +3637,42 @@
       if(next)dom.playlistSelect.value=next.id;
       saveLibraryToStorage();
       renderPlaylistList();
-      showUndoToast(t('toastPlaylistDeleted')+'：'+removed.name,()=>{
-        state.playlists.splice(Math.min(idx,state.playlists.length),0,removed);
-        state.playContext.playlistId=removed.id;
-        renderPlaylistOptions();
-        dom.playlistSelect.value=removed.id;
-        saveLibraryToStorage();
-        renderPlaylistList();
-      });
+      showToast(t('toastPlaylistDeleted')+' · '+removed.name);
     }
 
-    function removeTrackFromCurrentPlaylist(trackUid){
+    async function removeTrackFromCurrentPlaylist(trackUid){
       const plId=dom.playlistSelect.value;
       const pl=state.playlists.find(p=>p.id===plId);
       if(!pl)return;
-      const idx=pl.tracks.findIndex(tk=>tk.uid===trackUid);
+      if(pl.tracks.findIndex(tk=>tk.uid===trackUid)<0)return;
+
+      const ok=await showConfirm({
+        title:t('confirmRemoveTrackTitle'),
+        message:t('confirmRemoveTrackMsg').replace('{name}',pl.name),
+        okText:t('confirmRemove')
+      });
+      if(!ok)return;
+
+      /* 确认期间可能发生云端覆盖（applyLibrarySnapshot 会整体替换 state.playlists），
+         必须重新从 state 取当前歌单对象，否则改的是游离副本，删除不生效 */
+      const cur=state.playlists.find(p=>p.id===plId);
+      if(!cur)return;
+      const idx=cur.tracks.findIndex(tk=>tk.uid===trackUid);
       if(idx<0)return;
 
-      const removed=pl.tracks.splice(idx,1)[0];
+      const removed=cur.tracks.splice(idx,1)[0];
       if(state.playContext.type==='playlist' && state.playContext.playlistId===plId){
         if(state.currentTrack && removed && state.currentTrack.uid===removed.uid){
-          state.playContext.index=pl.tracks.length ? Math.min(idx,pl.tracks.length-1) : -1;
+          state.playContext.index=cur.tracks.length ? Math.min(idx,cur.tracks.length-1) : -1;
         }else if(idx<state.playContext.index){
           state.playContext.index-=1;
-        }else if(state.playContext.index>=pl.tracks.length){
-          state.playContext.index=pl.tracks.length-1;
+        }else if(state.playContext.index>=cur.tracks.length){
+          state.playContext.index=cur.tracks.length-1;
         }
       }
       saveLibraryToStorage();
       renderPlaylistList();
-      showUndoToast(t('toastTrackRemovedFromPlaylist')+'：'+pl.name,()=>{
-        pl.tracks.splice(Math.min(idx,pl.tracks.length),0,removed);
-        saveLibraryToStorage();
-        renderPlaylistList();
-      });
+      showToast(t('toastTrackRemovedFromPlaylist')+' · '+removed.title);
     }
 
     // ===================== 搜索结果 / 播放列表渲染 =====================
@@ -3781,6 +3804,10 @@
           }else if(activeTab==='favorites'){
             const i=state.favorites.findIndex(x=>x.uid===track.uid);
             playFromList('favorites',i);
+          }else if(activeTab==='daily'){
+            const list=getDailyTracks();
+            const i=list.findIndex(x=>x.uid===track.uid);
+            playFromList('daily',i);
           }else{
             const plId=dom.playlistSelect.value;
             const pl=state.playlists.find(p=>p.id===plId);
@@ -4224,6 +4251,11 @@
       $('picker-close').addEventListener('click',closePlaylistPickerModal);
       $('picker-cancel-btn').addEventListener('click',closePlaylistPickerModal);
       $('playlist-picker-modal').addEventListener('click',e=>{if(e.target===$('playlist-picker-modal'))closePlaylistPickerModal();});
+      /* 删除二次确认弹窗 */
+      $('confirm-ok-btn').addEventListener('click',()=>closeConfirm(true));
+      $('confirm-cancel-btn').addEventListener('click',()=>closeConfirm(false));
+      $('confirm-close').addEventListener('click',()=>closeConfirm(false));
+      $('confirm-modal').addEventListener('click',e=>{if(e.target===$('confirm-modal'))closeConfirm(false);});
 
       dom.shortcutToggleBtn.addEventListener('click',()=>{dom.shortcutModal.classList.add('show');});
       dom.shortcutCloseBtn.addEventListener('click',()=>{dom.shortcutModal.classList.remove('show');});
@@ -4244,14 +4276,16 @@
         const typing=(tag==='input'||tag==='textarea');
         const playlistOpen=dom.playlistModal.classList.contains('show');
         const shortcutOpen=dom.shortcutModal.classList.contains('show');
+        const confirmOpen=$('confirm-modal').classList.contains('show');
 
         if(e.key==='Escape'){
+          if(confirmOpen){closeConfirm(false);return;}
           if(playlistOpen)closePlaylistModal();
           if(shortcutOpen)dom.shortcutModal.classList.remove('show');
           return;
         }
 
-        if(playlistOpen || shortcutOpen){
+        if(playlistOpen || shortcutOpen || confirmOpen){
           return;
         }
 
