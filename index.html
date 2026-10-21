@@ -3371,6 +3371,25 @@
     const ICON_PAUSE='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
     const setPlayIcon=playing=>{dom.playBtn.innerHTML=playing?ICON_PAUSE:ICON_PLAY;};
 
+    /* 切歌/换源时清空进度与时间显示。
+       必须在 playTrack 一开始就调用：每日推荐要先联网解析 songid，
+       若等解析完才清，上一首"播完停在末尾"的状态会一直挂在界面上。 */
+    function resetProgressUI(){
+      dom.progressBar.style.transform='scaleX(0)';
+      dom.progressHandle.style.left='0px';
+      dom.currentTime.textContent=formatTime(0);
+      dom.totalTime.textContent=formatTime(0);
+    }
+    /* 播放失败时清空音频源：否则 <audio> 还挂着上一首的地址，
+       点播放键会把上一首重新放出来，而标题已经换成了新歌 */
+    function clearAudioSource(){
+      try{
+        dom.audio.pause();
+        dom.audio.removeAttribute('src');
+        dom.audio.load();
+      }catch(_){}
+    }
+
     async function playTrack(track,context){
       if(!track)return;
       const seq=++playSeq;
@@ -3426,6 +3445,7 @@
       };
 
       dom.playerStatus.textContent=t('playerStatusLoading');
+      resetProgressUI(); /* 先清掉上一首末尾的进度/时间，再等异步解析 */
       applyUI();
 
       state.lyricLines = track.lrc ? parseLRC(track.lrc) : [];
@@ -3438,13 +3458,19 @@
         applyUI();
         state.lyricLines = track.lrc ? parseLRC(track.lrc) : [];
         renderLyrics();
-        if(!track.audioUrl){showToast(t('toastPlayError'));dom.playerStatus.textContent=t('playerStatusIdle');return;}
+        if(!track.audioUrl){
+          /* 解析不到可播地址：把播放态收回"未播放"，否则 ended 遗留的 isPlaying=true
+             会让播放键变成"暂停"，用户点一下毫无反应 */
+          state.isPlaying=false;
+          setPlayIcon(false);
+          clearAudioSource();
+          showToast(t('toastPlayError'));
+          dom.playerStatus.textContent=t('playerStatusIdle');
+          return;
+        }
         dom.audio.src=track.audioUrl;
-        /* 重置进度条/时间显示：避免新歌加载期间残留上一首的末尾状态（如播完列表回绕时卡在最后） */
-        dom.progressBar.style.transform='scaleX(0)';
-        dom.progressHandle.style.left='0px';
-        dom.currentTime.textContent=formatTime(0);
-        dom.totalTime.textContent=formatTime(0);
+        /* 换源后再次归零：清掉上一首残留的 currentTime/duration 显示 */
+        resetProgressUI();
         await dom.audio.play();
         if(seq!==playSeq)return; /* play 等待期间被更新的切歌取代 */
         state.isPlaying=true;
@@ -3458,6 +3484,9 @@
           return;
         }
         console.error(e);
+        state.isPlaying=false; /* 播放失败同样要收回播放态，避免按钮显示"暂停"却点不动 */
+        setPlayIcon(false);
+        clearAudioSource();
         showToast(t('toastPlayError'));
         dom.playerStatus.textContent=t('playerStatusIdle');
       }
@@ -3528,7 +3557,7 @@
     }
 
     function togglePlayPause(){
-      if(!dom.audio.src)return;
+      if(!dom.audio.getAttribute('src'))return;
       if(state.isPlaying)dom.audio.pause();
       else dom.audio.play().catch(e=>console.error(e));
     }
