@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <title>皮卡丘的音乐站 - Pikachu Music</title>
+  <title>音乐站</title>
   <meta name="referrer" content="no-referrer" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <!-- 圆润可爱字体 -->
@@ -1061,6 +1061,25 @@
       transition:opacity .2s ease, transform .2s ease;
       z-index:1500;
     }
+    #toast.has-action {
+      pointer-events:auto;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:8px 10px 8px 16px;
+    }
+    .toast-undo-btn {
+      border:none;
+      background:rgba(245,200,76,0.15);
+      color:var(--accent);
+      font-size:12px;
+      font-weight:600;
+      padding:5px 12px;
+      border-radius:999px;
+      cursor:pointer;
+      flex-shrink:0;
+    }
+    .toast-undo-btn:hover { background:rgba(245,200,76,0.28); }
     #toast.show {
       opacity:1;
       transform:translateX(-50%) translateY(-4px);
@@ -1161,6 +1180,22 @@
       font-size:14px;
       margin-bottom:6px;
     }
+    .playlist-picker-list {
+      max-height:46vh;
+      overflow:auto;
+      margin:8px 0 4px;
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:10px;
+    }
+    .playlist-picker-item {
+      padding:10px 12px;
+      cursor:pointer;
+      font-size:13px;
+      color:#f5f6ff;
+      border-bottom:1px solid rgba(255,255,255,0.05);
+    }
+    .playlist-picker-item:last-child { border-bottom:none; }
+    .playlist-picker-item:hover { background:rgba(255,255,255,0.09); }
     .modal-title-wrap {
       display:flex;
       align-items:center;
@@ -1308,6 +1343,8 @@
       .track-actions .btn-icon{ width:32px; height:32px; font-size:13px; }
       .playmode-btn{ width:32px; height:32px; font-size:14px; }
       .control-main .play-btn{ width:48px; height:48px; font-size:20px; }
+      /* 上一首/下一首：图标跟随字号(1em)，加大字号才不会在 36px 按钮里显得过小 */
+      .control-main .btn-icon{ width:40px; height:40px; font-size:20px; }
       .progress-bar-wrapper{ height:10px; } /* 手指更好按 */
       .track-item{ padding:10px; font-size:12px; }
       .track-meta-title{ font-size:13px; }
@@ -1340,7 +1377,7 @@
           <img src="pikachu.gif" alt="Pikachu" class="pikachu-img">
         </div>
         <div class="title-text">
-          <h1 data-i18n="appTitle">皮卡丘的音乐站</h1>
+          <h1 data-i18n="appTitle">音乐站</h1>
         </div>
       </div>
       <div class="header-controls">
@@ -1450,6 +1487,7 @@
               </div>
               <div class="player-actions">
                 <div class="player-btn-row">
+                  <button id="add-to-playlist-btn" class="btn btn-secondary btn-icon ripple-target" title="加入歌单">＋</button>
                   <button id="fav-btn" class="btn btn-secondary btn-icon ripple-target" title="收藏 (F)">❤</button>
                   <button id="download-btn" class="btn btn-secondary btn-icon ripple-target" title="下载">⬇</button>
                 </div>
@@ -1503,6 +1541,7 @@
             <div class="playlist-tab" data-tab="results" data-i18n="tabResults">搜索结果</div>
             <div class="playlist-tab" data-tab="favorites" data-i18n="tabFavorites">我的收藏</div>
             <div class="playlist-tab active" data-tab="playlists" data-i18n="tabCustomLists">自建歌单</div>
+            <div class="playlist-tab" data-tab="daily" data-i18n="tabDaily">每日推荐</div>
           </div>
         </div>
 
@@ -1559,6 +1598,24 @@
     </div>
   </div>
 
+  <!-- 加入歌单：多歌单选择弹窗 -->
+  <div id="playlist-picker-modal" class="modal-backdrop">
+    <div class="modal ripple-target">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-title-icon">📂</div>
+          <span data-i18n="pickerTitle">选择要加入的歌单</span>
+        </div>
+        <button id="picker-close" class="modal-close-btn">×</button>
+      </div>
+      <p class="modal-desc" data-i18n="pickerDesc">点击一个歌单，把当前歌曲加进去～</p>
+      <div id="playlist-picker-list" class="playlist-picker-list"></div>
+      <div class="modal-actions">
+        <button id="picker-cancel-btn" class="btn btn-ghost ripple-target" data-i18n="modalCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 快捷键说明弹窗 -->
   <div id="shortcut-modal" class="modal-backdrop">
     <div class="modal ripple-target">
@@ -1570,7 +1627,7 @@
         <button id="shortcut-close" class="modal-close-btn">×</button>
       </div>
       <p class="modal-desc" data-i18n="shortcutPanelDesc">
-        使用键盘可以更加方便地控制皮卡丘的音乐站：
+        使用键盘可以更加方便地控制音乐站：
       </p>
       <div class="shortcut-grid">
         <div class="shortcut-card">
@@ -1653,12 +1710,19 @@
   (function(){
     const translations = {
       zh: {
-        appTitle:"皮卡丘的音乐站",
+        appTitle:"音乐站",
         syncPanelTitle:"歌单云同步",
         syncPanelDesc:"填写 GitHub Gist 信息后，歌单与收藏将在手机和电脑之间自动同步。",
         syncGistLabel:"Gist ID",
         syncTokenLabel:"访问令牌 Token（需 gist 权限）",
         syncSave:"保存并连接",
+        tabDaily:"每日推荐",
+        toastUndo:"撤销",
+        toastUndoDone:"已撤销",
+        playlistInfoDaily:"今日精选 30 首 · 每天零点更新",
+        toastNeedPlaylist:"还没有歌单，先新建一个吧～",
+        pickerTitle:"选择要加入的歌单",
+        pickerDesc:"点击一个歌单，把当前歌曲加进去～",
         syncPullForce:"从云端覆盖本地",
         syncPushForce:"上传覆盖云端",
         syncNote:"令牌仅保存在本机浏览器中，请勿泄露。打开页面自动拉取，改动后自动上传；新增内容双端合并，删除也会同步（删除的歌曲/歌单不会复活）。",
@@ -1677,7 +1741,7 @@
         toastSyncNoConfig:"请先填写 Gist ID 和 Token。",
         shortcutHint:"快捷键：Space 播放/暂停 · ←/→ 跳转 · ↑/↓ 音量 · N/P 切歌 · F 收藏 · L 切换歌词效果",
         shortcutPanelTitle:"快捷键说明",
-        shortcutPanelDesc:"使用键盘可以更加方便地控制皮卡丘的音乐站：",
+        shortcutPanelDesc:"使用键盘可以更加方便地控制音乐站：",
         shortcutPlayPause:"播放 / 暂停",
         shortcutSeek:"快退 / 快进 5 秒",
         shortcutVolume:"音量加 / 减",
@@ -1754,12 +1818,19 @@
         modalCancel:"取消"
       },
       en: {
-        appTitle:"Pikachu Music Station",
+        appTitle:"Music Station",
         syncPanelTitle:"Playlist Cloud Sync",
         syncPanelDesc:"Fill in your GitHub Gist info to keep playlists and favorites in sync between phone and desktop.",
         syncGistLabel:"Gist ID",
         syncTokenLabel:"Access Token (gist scope required)",
         syncSave:"Save & Connect",
+        tabDaily:"Daily Picks",
+        toastUndo:"Undo",
+        toastUndoDone:"Restored",
+        playlistInfoDaily:"30 picks today · refreshes at midnight",
+        toastNeedPlaylist:"No playlist yet. Create one first!",
+        pickerTitle:"Choose a Playlist",
+        pickerDesc:"Tap a playlist to add the current track.",
         syncPullForce:"Overwrite Local from Cloud",
         syncPushForce:"Upload Overwrite Cloud",
         syncNote:"The token is stored only in this browser. Auto pull on open and auto push on change; additions merge on both ends and deletions sync too (deleted songs/playlists won't come back).",
@@ -1778,7 +1849,7 @@
         toastSyncNoConfig:"Please fill in Gist ID and Token first.",
         shortcutHint:"Shortcuts: Space Play/Pause · ←/→ Seek · ↑/↓ Volume · N/P Track · F Fav · L Lyrics FX",
         shortcutPanelTitle:"Keyboard Shortcuts",
-        shortcutPanelDesc:"Control Pikachu Music Station more easily with your keyboard:",
+        shortcutPanelDesc:"Control Music Station more easily with your keyboard:",
         shortcutPlayPause:"Play / Pause",
         shortcutSeek:"Seek backward / forward 5s",
         shortcutVolume:"Volume up / down",
@@ -1870,6 +1941,7 @@
       playlists:[],
       currentTrack:null,
       playContext:{type:'playlist',index:-1,playlistId:null},
+      dailyTracks:[],dailyDate:'',
       playMode:'list',
       isPlaying:false,
       lyricLines:[],
@@ -1889,9 +1961,40 @@
     function t(k){const lang=state.language;return (translations[lang]&&translations[lang][k])||translations.zh[k]||k;}
     function showToast(msg){
       const toast=$('toast'); if(!toast)return;
+      toast.classList.remove('has-action');
       toast.textContent=msg;
       toast.classList.add('show');
       setTimeout(()=>toast.classList.remove('show'),2000);
+    }
+    /* 撤销式删除提示：5 秒内点"撤销"恢复，超时自动生效（真正删除已在调用方执行） */
+    let undoToastTimer=null;
+    function showUndoToast(msg,undoFn){
+      const toast=$('toast'); if(!toast){return;}
+      if(undoToastTimer)clearTimeout(undoToastTimer);
+      toast.classList.add('has-action');
+      toast.innerHTML='';
+      const span=document.createElement('span');
+      span.textContent=msg;
+      const btn=document.createElement('button');
+      btn.className='toast-undo-btn';
+      btn.textContent=t('toastUndo');
+      let undone=false;
+      btn.addEventListener('click',()=>{
+        if(undone)return;
+        undone=true;
+        clearTimeout(undoToastTimer);
+        undoFn();
+        showToast(t('toastUndoDone'));
+      });
+      toast.appendChild(span);
+      toast.appendChild(btn);
+      toast.classList.add('show');
+      undoToastTimer=setTimeout(()=>{
+        if(undone)return;
+        toast.classList.remove('show');
+        toast.classList.remove('has-action');
+        toast.innerHTML='';
+      },5000);
     }
     function formatTime(sec){
       if(!isFinite(sec)||sec<0)sec=0;
@@ -2070,7 +2173,7 @@
       const a=document.createElement('a');
       const date=new Date().toISOString().slice(0,10);
       a.href=url;
-      a.download='pikachu-music-playlists-'+date+'.json';
+      a.download='music-station-playlists-'+date+'.json';
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -3068,12 +3171,104 @@
     }
 
     async function ensureTrackDetails(track){
-      if(track.detailsLoaded && track.audioUrl && (track.lrc || !track.lrcUrl)) return;
       dom.playerStatus.textContent=t('playerStatusLoading');
+      if(track.dailyPending) await resolveDailyTrack(track);
+      if(track.detailsLoaded && track.audioUrl && (track.lrc || !track.lrcUrl)) return;
       if(track.source==='netease') await fetchNeteaseDetails(track);
       else if(track.source==='kuwo') await fetchKuwoDetails(track);
       else if(track.source==='joox') await fetchJooxDetails(track);
       else await fetchQQDetails(track);
+    }
+
+    // ===================== 每日推荐 =====================
+    // 设计：本地热门曲池 + 当天日期做随机种子 → 同一天任何设备生成同一份列表；
+    // 播放时再按"歌名 歌手"实时搜索解析出可播的 songid（懒解析，不占存储）。
+    const DAILY_POOL=[
+      ["晴天","周杰伦"],["七里香","周杰伦"],["稻香","周杰伦"],["青花瓷","周杰伦"],["告白气球","周杰伦"],
+      ["夜曲","周杰伦"],["简单爱","周杰伦"],["安静","周杰伦"],["轨迹","周杰伦"],["搁浅","周杰伦"],
+      ["突然好想你","五月天"],["倔强","五月天"],["温柔","五月天"],["知足","五月天"],["后来的我们","五月天"],
+      ["后来","刘若英"],["很爱很爱你","刘若英"],["成全","刘若英"],
+      ["十年","陈奕迅"],["富士山下","陈奕迅"],["孤勇者","陈奕迅"],["好久不见","陈奕迅"],["红玫瑰","陈奕迅"],
+      ["爱情转移","陈奕迅"],["浮夸","陈奕迅"],["K歌之王","陈奕迅"],
+      ["光年之外","邓紫棋"],["泡沫","邓紫棋"],["倒数","邓紫棋"],["句号","邓紫棋"],["喜欢你","邓紫棋"],
+      ["演员","薛之谦"],["认真的雪","薛之谦"],["丑八怪","薛之谦"],["动物世界","薛之谦"],["像风一样","薛之谦"],
+      ["消愁","毛不易"],["像我这样的人","毛不易"],["一荤一素","毛不易"],["不染","毛不易"],
+      ["平凡之路","朴树"],["生如夏花","朴树"],["那些花儿","朴树"],["清白之年","朴树"],
+      ["南方姑娘","赵雷"],["成都","赵雷"],["理想","赵雷"],["画","赵雷"],
+      ["春风十里","鹿先森乐队"],["南山南","马頔"],["斑马斑马","宋冬野"],["董小姐","宋冬野"],["安和桥","宋冬野"],
+      ["岁月神偷","金玟岐"],["小幸运","田馥甄"],["魔鬼中的天使","田馥甄"],["小情歌","苏打绿"],["我好想你","苏打绿"],
+      ["无与伦比的美丽","苏打绿"],["起风了","买辣椒也用券"],["世间美好与你环环相扣","柏松"],["芒种","音阙诗听"],
+      ["红色高跟鞋","蔡健雅"],["说散就散","袁娅维"],["体面","于文文"],["追光者","岑宁儿"],["漠河舞厅","柳爽"],
+      ["乌梅子酱","李荣浩"],["年少有为","李荣浩"],["李白","李荣浩"],["老街","李荣浩"],
+      ["大鱼","周深"],["化身孤岛的鲸","周深"],["和光同尘","周深"],["想把我唱给你听","老狼"],["同桌的你","老狼"],
+      ["光辉岁月","Beyond"],["海阔天空","Beyond"],["真的爱你","Beyond"],["喜欢你","Beyond"],["不再犹豫","Beyond"],
+      ["红豆","王菲"],["传奇","王菲"],["匆匆那年","王菲"],["我愿意","王菲"],
+      ["倒带","蔡依林"],["说爱你","蔡依林"],["日不落","蔡依林"],["新不了情","万芳"],
+      ["隐形的翅膀","张韶涵"],["欧若拉","张韶涵"],["阿刁","张韶涵"],["口袋的天空","张韶涵"],
+      ["爱笑的眼睛","徐若瑄"],["我们的爱","F.I.R."],["Lydia","F.I.R."],["月牙湾","F.I.R."],["你的微笑","F.I.R."],
+      ["不想长大","S.H.E."],["Super Star","S.H.E."],["中国话","S.H.E."],["波斯猫","S.H.E."],
+      ["阴天","莫文蔚"],["忽然之间","莫文蔚"],["盛夏的果实","莫文蔚"],["他不爱我","莫文蔚"],
+      ["遇见","孙燕姿"],["天黑黑","孙燕姿"],["我怀念的","孙燕姿"],["绿光","孙燕姿"],["开始懂了","孙燕姿"],
+      ["勇气","梁静茹"],["暖暖","梁静茹"],["情歌","梁静茹"],["可惜不是你","梁静茹"],["宁夏","梁静茹"],
+      ["月亮代表我的心","邓丽君"],["我只在乎你","邓丽君"],["甜蜜蜜","邓丽君"],
+      ["朋友","周华健"],["让我欢喜让我忧","周华健"],["花心","周华健"],
+      ["爱如潮水","张信哲"],["过火","张信哲"],["信仰","张信哲"],["白月光","张信哲"],
+      ["吻别","张学友"],["一千个伤心的理由","张学友"],["遥远的她","张学友"],["李香兰","张学友"],
+      ["水手","郑智化"],["星星点灯","郑智化"],["真心英雄","成龙"],["男儿当自强","林子祥"],
+      ["谁伴我闯荡","Beyond"],["冷雨夜","Beyond"],["逝去日子","Beyond"]
+    ];
+    function hashSeed(str){
+      let h=2166136261;
+      for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
+      return h>>>0;
+    }
+    function mulberry32(a){
+      return function(){
+        a|=0; a=a+0x6D2B79F5|0;
+        let t=Math.imul(a^a>>>15,1|a);
+        t=t+Math.imul(t^t>>>7,61|t)^t;
+        return ((t^t>>>14)>>>0)/4294967296;
+      };
+    }
+    function getDailyTracks(){
+      /* 用本地日期（而非 UTC）：北京时间零点换新列表 */
+      const now=new Date();
+      const key=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+      if(state.dailyDate===key && state.dailyTracks.length) return state.dailyTracks;
+      const rnd=mulberry32(hashSeed('pikachu-daily-'+key));
+      const pool=DAILY_POOL.slice();
+      for(let i=pool.length-1;i>0;i--){
+        const j=Math.floor(rnd()*(i+1));
+        const tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;
+      }
+      state.dailyTracks=pool.slice(0,30).map((s,idx)=>({
+        uid:'daily-'+key+'-'+idx,
+        source:'netease',
+        displayIndex:idx+1,
+        keyword:s[0]+' '+s[1],
+        title:s[0],
+        artist:s[1],
+        album:'',
+        dailyPending:true
+      }));
+      state.dailyDate=key;
+      return state.dailyTracks;
+    }
+    async function resolveDailyTrack(track){
+      const kw=(track.title+' '+track.artist).trim();
+      const url=`https://api.qijieya.cn/meting/?type=search&id=${encodeURIComponent(kw)}&limit=10&server=netease`;
+      const res=await fetch(url);
+      const json=await res.json();
+      if(!Array.isArray(json)||!json.length) throw new Error('daily resolve failed: '+kw);
+      let songid='';
+      for(const it of json){
+        const m=String(it.url||'').match(/[?&]id=([^&]+)/);
+        if(m){ songid=decodeURIComponent(m[1]); break; }
+      }
+      if(!songid) throw new Error('daily resolve no id: '+kw);
+      track.songid=songid;
+      track.uid='netease-'+songid;
+      track.dailyPending=false;
     }
 
     // ===================== 歌词处理 =====================
@@ -3161,6 +3356,11 @@
     }
 
     let playSeq=0; /* 切歌序号：竞态保护 */
+    /* ===== 播放控制图标（SVG，避免 ▶/⏸ 字符视觉重心偏移；必须在外层，playTrack/setPlayIcon 跨作用域共用） ===== */
+    const ICON_PLAY='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+    const ICON_PAUSE='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+    const setPlayIcon=playing=>{dom.playBtn.innerHTML=playing?ICON_PAUSE:ICON_PLAY;};
+
     async function playTrack(track,context){
       if(!track)return;
       const seq=++playSeq;
@@ -3208,7 +3408,7 @@
             navigator.mediaSession.metadata=new MediaMetadata({
               title:track.title||'',
               artist:track.artist||'',
-              album:'Pikachu Music',
+              album:t('appTitle'),
               artwork:track.cover?[{src:track.cover,sizes:'512x512',type:'image/jpeg'}]:[]
             });
           }catch(_){}
@@ -3266,6 +3466,7 @@
         return list;
       }
       if(tp==='favorites')return state.favorites;
+      if(tp==='daily')return state.dailyTracks;
       if(tp==='playlist'){
         const pl=state.playlists.find(p=>p.id===state.playContext.playlistId);
         return pl?pl.tracks:[];
@@ -3277,6 +3478,7 @@
       let list;
       if(type==='results') list=getInterleavedSearchList();
       else if(type==='favorites') list=state.favorites;
+      else if(type==='daily') list=state.dailyTracks;
       else{
         const pl=state.playlists.find(p=>p.id===plId);
         list=pl?pl.tracks:[];
@@ -3354,14 +3556,57 @@
       showToast(t('toastAddedToPlaylist'));
     }
 
+    /* ===== 加入歌单（智能入口）：无歌单→引导新建；1 个→直接加入；多个→弹选择 ===== */
+    function addTrackToPlaylistSmart(pl,track){
+      if(pl.tracks.some(tk=>tk.uid===track.uid)){
+        showToast(t('toastAlreadyInList'));
+        return;
+      }
+      pl.tracks.push(track);
+      saveLibraryToStorage();
+      renderPlaylistList();
+      showToast(t('toastAddedToPlaylist')+'：'+pl.name);
+    }
+    function addCurrentToPlaylistSmart(){
+      const track=state.currentTrack;
+      if(!track){showToast(t('toastNoCurrentTrack'));return;}
+      if(!state.playlists.length){
+        showToast(t('toastNeedPlaylist'));
+        openPlaylistModal();
+        return;
+      }
+      if(state.playlists.length===1){
+        addTrackToPlaylistSmart(state.playlists[0],track);
+        return;
+      }
+      openPlaylistPickerModal();
+    }
+    function openPlaylistPickerModal(){
+      const list=$('playlist-picker-list');
+      list.innerHTML='';
+      state.playlists.forEach(pl=>{
+        const item=document.createElement('div');
+        item.className='playlist-picker-item';
+        item.textContent=pl.name+'（'+pl.tracks.length+'）';
+        item.addEventListener('click',()=>{
+          closePlaylistPickerModal();
+          addTrackToPlaylistSmart(pl,state.currentTrack);
+        });
+        list.appendChild(item);
+      });
+      $('playlist-picker-modal').classList.add('show');
+    }
+    function closePlaylistPickerModal(){
+      $('playlist-picker-modal').classList.remove('show');
+    }
+
     function deleteSelectedPlaylist(){
       const plId=dom.playlistSelect.value;
       if(!plId){showToast(t('toastNeedPlaylistSelected'));return;}
       const idx=state.playlists.findIndex(p=>p.id===plId);
       if(idx<0){showToast(t('toastNeedPlaylistSelected'));return;}
-      if(!window.confirm(t('confirmDeletePlaylist')))return;
 
-      state.playlists.splice(idx,1);
+      const removed=state.playlists.splice(idx,1)[0];
       const next=state.playlists[Math.min(idx,state.playlists.length-1)]||state.playlists[0]||null;
       state.playContext.playlistId=next?next.id:null;
       if(state.playContext.type==='playlist' && !next){
@@ -3371,7 +3616,14 @@
       if(next)dom.playlistSelect.value=next.id;
       saveLibraryToStorage();
       renderPlaylistList();
-      showToast(t('toastPlaylistDeleted'));
+      showUndoToast(t('toastPlaylistDeleted')+'：'+removed.name,()=>{
+        state.playlists.splice(Math.min(idx,state.playlists.length),0,removed);
+        state.playContext.playlistId=removed.id;
+        renderPlaylistOptions();
+        dom.playlistSelect.value=removed.id;
+        saveLibraryToStorage();
+        renderPlaylistList();
+      });
     }
 
     function removeTrackFromCurrentPlaylist(trackUid){
@@ -3380,7 +3632,6 @@
       if(!pl)return;
       const idx=pl.tracks.findIndex(tk=>tk.uid===trackUid);
       if(idx<0)return;
-      if(!window.confirm(t('confirmRemoveTrack')))return;
 
       const removed=pl.tracks.splice(idx,1)[0];
       if(state.playContext.type==='playlist' && state.playContext.playlistId===plId){
@@ -3394,7 +3645,11 @@
       }
       saveLibraryToStorage();
       renderPlaylistList();
-      showToast(t('toastTrackRemovedFromPlaylist'));
+      showUndoToast(t('toastTrackRemovedFromPlaylist')+'：'+pl.name,()=>{
+        pl.tracks.splice(Math.min(idx,pl.tracks.length),0,removed);
+        saveLibraryToStorage();
+        renderPlaylistList();
+      });
     }
 
     // ===================== 搜索结果 / 播放列表渲染 =====================
@@ -3442,6 +3697,7 @@
       const tab=document.querySelector('.playlist-tab.active')?.dataset.tab||'results';
       if(tab==='results') dom.playlistInfo.textContent = t('playlistInfoResults');
       else if(tab==='favorites') dom.playlistInfo.textContent = t('playlistInfoFavorites');
+      else if(tab==='daily') dom.playlistInfo.textContent = t('playlistInfoDaily');
       else {
         const pl=state.playlists.find(p=>p.id===dom.playlistSelect.value);
         const base=t('playlistInfoPlaylist');
@@ -3462,6 +3718,9 @@
         dom.playlistSelectRow.style.display='none';
       }else if(activeTab==='favorites'){
         list=state.favorites;
+        dom.playlistSelectRow.style.display='none';
+      }else if(activeTab==='daily'){
+        list=getDailyTracks();
         dom.playlistSelectRow.style.display='none';
       }else{
         dom.playlistSelectRow.style.display='flex';
@@ -3715,6 +3974,7 @@
       dom.prevBtn=$('prev-btn');
       dom.nextBtn=$('next-btn');
       dom.favBtn=$('fav-btn');
+      dom.addToPlaylistBtn=$('add-to-playlist-btn');
       dom.downloadBtn=$('download-btn');
       dom.audio=$('audio');
       dom.currentTime=$('current-time');
@@ -3861,10 +4121,7 @@
         audioLevel = 0.3 + 0.7 * intensity * (dom.audio.volume || 1);
         updateLyricsHighlight(cur);
       });
-      /* ===== 播放控制图标（SVG，避免 ▶/⏸ 字符视觉重心偏移） ===== */
-      const ICON_PLAY='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
-      const ICON_PAUSE='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
-      const setPlayIcon=playing=>{dom.playBtn.innerHTML=playing?ICON_PAUSE:ICON_PLAY;};
+      /* ===== 播放控制图标：ICON 常量与 setPlayIcon 定义在外层共享作用域（playTrack 也在用） ===== */
 
       dom.audio.addEventListener('play',()=>{
         state.isPlaying=true;
@@ -3937,6 +4194,9 @@
             state.playContext.type='results';state.playContext.playlistId=null;
           }else if(tName==='favorites'){
             state.playContext.type='favorites';state.playContext.playlistId=null;
+          }else if(tName==='daily'){
+            state.playContext.type='daily';state.playContext.playlistId=null;
+            getDailyTracks();
           }else{
             state.playContext.type='playlist';
             if(state.playlists.length&&!state.playContext.playlistId)state.playContext.playlistId=state.playlists[0].id;
@@ -3960,6 +4220,10 @@
         renderPlaylistList();
       });
       dom.addCurrentBtn.addEventListener('click',addCurrentToPlaylist);
+      dom.addToPlaylistBtn.addEventListener('click',addCurrentToPlaylistSmart);
+      $('picker-close').addEventListener('click',closePlaylistPickerModal);
+      $('picker-cancel-btn').addEventListener('click',closePlaylistPickerModal);
+      $('playlist-picker-modal').addEventListener('click',e=>{if(e.target===$('playlist-picker-modal'))closePlaylistPickerModal();});
 
       dom.shortcutToggleBtn.addEventListener('click',()=>{dom.shortcutModal.classList.add('show');});
       dom.shortcutCloseBtn.addEventListener('click',()=>{dom.shortcutModal.classList.remove('show');});
